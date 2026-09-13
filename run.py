@@ -149,12 +149,29 @@ def main():
             print(f"Explanation for User 1 Top Rec '{h_recs[0]['title']}':", flush=True)
             print(f"  Dominant Branch : {exp['hybrid_evidence']['dominant_branch']}", flush=True)
             print(f"  Summary         : {exp['summary']}", flush=True)
+
+            print("\n--- PHASE 9: PRODUCTION RECOMMENDATION SERVING API ---", flush=True)
+            from fastapi.testclient import TestClient
+            from src.api import app
+            client = TestClient(app)
+
+            h_res = client.get("/health")
+            print(f"GET /health Status                : {h_res.status_code} ({h_res.json()['status']})", flush=True)
+
+            c_res = client.get("/recommend/content?title=Avatar&top_n=2")
+            print(f"GET /recommend/content Status     : {c_res.status_code} ({len(c_res.json()['recommendations'])} recs)", flush=True)
+
+            hy_res = client.post("/recommend/hybrid", json={"user_id": 1, "alpha": 0.5, "top_n": 2})
+            print(f"POST /recommend/hybrid Status     : {hy_res.status_code} ({len(hy_res.json()['recommendations'])} recs)", flush=True)
+
+            ex_res = client.post("/recommend/explain", json={"user_id": 1, "target_movie_id": int(top_rec_id), "alpha": 0.5})
+            print(f"POST /recommend/explain Status    : {ex_res.status_code}", flush=True)
         else:
             print("MovieLens dataset not found in data/raw/movielens/ml-latest-small/.", flush=True)
-            print("Run scratch/download_movielens.py according to README.md to run Phase 6, 7 & 8 demonstration.", flush=True)
+            print("Run scratch/download_movielens.py according to README.md to run Phase 6, 7, 8 & 9 demonstration.", flush=True)
 
         print("\n" + "=" * 80, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5, 6, 7 & 8) PASSED SUCCESSFULLY ---", flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5, 6, 7, 8 & 9) PASSED SUCCESSFULLY ---", flush=True)
         print("=" * 80, flush=True)
 
     except Exception as e:

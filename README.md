@@ -3,7 +3,7 @@
 A content-based and collaborative-filtering movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, item-based collaborative filtering, similarity ranking, and offline evaluation metrics.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 8 COMPLETED**
+> **CURRENT PROJECT STATUS: PHASE 9 COMPLETED**
 > - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
 > - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
 > - **Phase 3 (Completed)**: TF-IDF Vectorization (`max_features=5000`, `stop_words='english'`), Cosine Similarity Matrix Modeling, Case-Insensitive Title Lookup, and Content-Based Recommendation Engine.
@@ -12,7 +12,8 @@ A content-based and collaborative-filtering movie recommendation engine built us
 > - **Phase 6 (Completed)**: Item-Based Collaborative Filtering (`ItemBasedCollaborativeRecommender`) using genuine user interaction data from **MovieLens latest-small** and leakage-safe temporal evaluation.
 > - **Phase 7 (Completed)**: Hybrid Movie Recommendation System (`HybridMovieRecommender`), candidate pool union ($N_{\text{cand}}=100$), Min-Max score normalization, title identity mapping alignment, and alpha ablation benchmarking.
 > - **Phase 8 (Completed)**: Explainable Recommendation Analysis Layer (`RecommendationExplainer`), transparently decomposing model recommendations into factual content metadata overlaps, collaborative item-item rating contributions, and hybrid score weights with human-readable summary generation.
-> - **Future Phases (Upcoming)**: Web API Service (FastAPI) and Frontend UI (Streamlit).
+> - **Phase 9 (Completed)**: Production Recommendation Serving & API Layer (`src/api.py`), exposing Content, Personalized, Collaborative, Hybrid, and Explainable recommendations via lightweight REST endpoints (FastAPI, Pydantic, Uvicorn).
+> - **Future Phases (Upcoming)**: Frontend UI (Streamlit).
 >
 > **DATASET POLICY & DISCLAIMER**:
 > 1. TMDB 5000 is a movie metadata dataset containing no multi-user interaction logs and is **NOT** used for collaborative filtering.
@@ -41,10 +42,10 @@ A content-based and collaborative-filtering movie recommendation engine built us
              [ Hybrid Movie Recommender ]
              score = α * norm_content + (1 - α) * norm_cf
                           │
-         ┌────────────────┴────────────────┐
-         ▼                                 ▼  ◄── PHASE 8
-[ Offline Evaluation Framework ]  [ Recommendation Explainer ]
- (Precision@K, Recall@K, NDCG@K)   (Content, CF & Hybrid Evidence)
+         ┌────────────────┼────────────────┐
+         ▼                ▼                ▼  ◄── PHASE 8 & 9
+[ Offline Evaluation ]  [ Explainer ]  [ FastAPI REST Serving Layer ]
+(Precision, Recall, NDCG) (Evidence)   (/health, /recommend/*, /explain)
 ```
 
 ---
@@ -98,6 +99,39 @@ Phase 8 introduces `RecommendationExplainer` in `src/explanation.py`, answering 
 
 ---
 
+## ⚡ Phase 9 — Production Recommendation Serving & API Layer
+
+### 1. API Architecture & Design
+Phase 9 exposes the recommendation system via a lightweight **FastAPI** REST service (`src/api.py`). It reuses existing Phase 1–8 recommendation engines and explanations without modifying underlying algorithms.
+
+- **Singleton Model Lifecycle**: Datasets and recommendation models are initialized **ONCE** during application startup (`lifespan` context manager) to avoid per-request model refitting or $O(N^2)$ matrix recalculations.
+- **Strict Pydantic Validation**: Validates request parameters (non-empty titles, integer ratings between 1 and 5, `top_n > 0`, `alpha` in $[0.0, 1.0]$, duplicate title rejection, and explicit boolean rejection for numeric fields).
+- **Clean JSON Serialization**: Converts NumPy scalars/arrays to native Python types, preventing serialization crashes.
+- **Structured Error Responses**: Replaces raw stack traces with structured JSON error objects (`{"error": "...", "detail": "..."}`) returning HTTP status codes 400, 404, or 422.
+
+### 2. Available Endpoints
+
+| Endpoint | Method | Description | Example Query / Body |
+| :--- | :---: | :--- | :--- |
+| `/health` | `GET` | Service readiness & dataset status | `GET /health` |
+| `/recommend/content` | `GET` | Single-movie content recommendations | `GET /recommend/content?title=Avatar&top_n=5` |
+| `/recommend/personalized` | `POST` | User profile content recommendations | `{"history": [{"title": "Avatar", "rating": 5}], "top_n": 5}` |
+| `/recommend/hybrid` | `POST` | Hybrid content & CF recommendations | `{"user_id": 1, "alpha": 0.5, "top_n": 5}` |
+| `/recommend/explain` | `POST` | Recommendation evidence breakdown & summary | `{"user_id": 1, "target_movie_id": 2918, "alpha": 0.5}` |
+
+### 3. Launching the Local API Server
+
+To start the Uvicorn web server locally:
+
+```bash
+python -m uvicorn src.api:app --reload
+```
+
+> [!IMPORTANT]
+> **API Serving Disclaimer**: This REST API layer provides an in-process serving demonstration via FastAPI. It does **NOT** include persistent user databases, user authentication/JWT, Redis caching, microservices, Docker, or cloud deployment.
+
+---
+
 ## 📁 Repository Structure
 
 ```
@@ -123,7 +157,8 @@ Personalized-movie-recommendation-system/
 │   ├── 05_model_evaluation.ipynb
 │   ├── 06_collaborative_filtering.ipynb
 │   ├── 07_hybrid_recommendation.ipynb
-│   └── 08_recommendation_explainability.ipynb
+│   ├── 08_recommendation_explainability.ipynb
+│   └── 09_api_serving_demo.ipynb
 │
 ├── src/
 │   ├── __init__.py
@@ -134,7 +169,8 @@ Personalized-movie-recommendation-system/
 │   ├── evaluator.py
 │   ├── collaborative_filter.py
 │   ├── hybrid_recommender.py
-│   └── explanation.py
+│   ├── explanation.py
+│   └── api.py
 │
 ├── tests/
 │   ├── __init__.py
@@ -145,7 +181,8 @@ Personalized-movie-recommendation-system/
 │   ├── test_evaluator.py
 │   ├── test_collaborative_filter.py
 │   ├── test_hybrid_recommender.py
-│   └── test_explanation.py
+│   ├── test_explanation.py
+│   └── test_api.py
 │
 ├── .gitignore
 ├── README.md
@@ -169,7 +206,7 @@ pip install -r requirements.txt
 
 ### 2. Download Optional MovieLens Dataset
 
-To run Phase 6, 7 & 8 collaborative, hybrid, and explainable recommendation on genuine user interaction data, download MovieLens latest-small:
+To run Phase 6, 7, 8 & 9 collaborative, hybrid, explainable, and API recommendation serving on genuine user interaction data, download MovieLens latest-small:
 
 ```bash
 python -c "
@@ -184,7 +221,7 @@ zipfile.ZipFile(z).extractall(d)
 
 ### 3. Run Main Pipeline Verification
 
-Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, evaluation, collaborative filtering, hybrid recommendation, and explainable analysis:
+Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, evaluation, collaborative filtering, hybrid recommendation, explainable analysis, and API serving verification:
 
 ```bash
 python run.py
@@ -192,18 +229,26 @@ python run.py
 
 ### 4. Run Complete Unit Test Suite
 
-Execute all 129 unit tests across Phases 1–8:
+Execute all 147 unit tests across Phases 1–9:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-### 5. Explore Explainability Notebook
+### 5. Launch REST API Server
+
+Start the FastAPI application with Uvicorn:
+
+```bash
+python -m uvicorn src.api:app --reload
+```
+
+### 6. Explore API Serving Notebook
 
 Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/08_recommendation_explainability.ipynb
+jupyter notebook notebooks/09_api_serving_demo.ipynb
 ```
 
 ---
@@ -218,4 +263,5 @@ jupyter notebook notebooks/08_recommendation_explainability.ipynb
 - [x] **Phase 6**: Item-Based Collaborative Filtering Engine & Temporal Evaluation
 - [x] **Phase 7**: Hybrid Movie Recommendation System, Candidate Pool Union, Min-Max Normalization & Ablation Evaluation
 - [x] **Phase 8**: Explainable Recommendation Analysis Layer (`RecommendationExplainer`) & Summary Generation
-- [ ] **Phase 9**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
+- [x] **Phase 9**: Production Recommendation Serving & API Layer (`src/api.py`)
+- [ ] **Future Phases (Upcoming)**: Frontend UI (Streamlit)
