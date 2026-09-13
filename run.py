@@ -1,10 +1,11 @@
 """
 Main Entry Point Verification Script — Personalized Movie Recommendation System
 
-Demonstrates end-to-end pipeline:
+Demonstrates complete pipeline:
 Phase 1: Data Ingestion & ID-Based Merging
 Phase 2: Data Preprocessing & Unified Tags Construction
-Phase 3: TF-IDF Vectorization & Content-Based Recommendation Engine
+Phase 3: TF-IDF Vectorization & Single-Movie Recommendations
+Phase 4: Weighted User Profile Modeling & Personalized Recommendations
 """
 
 import sys
@@ -13,12 +14,13 @@ import pandas as pd
 from src.data_loader import load_movies
 from src.preprocessor import preprocess_data
 from src.recommender import MovieRecommender
+from src.personalizer import PersonalizedRecommender
 
 
 def main():
-    print("=" * 75, flush=True)
+    print("=" * 80, flush=True)
     print("Personalized Movie Recommendation System — Complete Pipeline Verification", flush=True)
-    print("=" * 75, flush=True)
+    print("=" * 80, flush=True)
 
     try:
         print("\n--- PHASE 1: DATA LOADING ---", flush=True)
@@ -37,22 +39,38 @@ def main():
         print(f"Total Processed Movies: {len(clean_df)}", flush=True)
         print(f"Non-Empty Tags Count: {(clean_df['tags'].str.strip() != '').sum()} / {len(clean_df)}", flush=True)
 
-        print("\n--- PHASE 3: CONTENT-BASED RECOMMENDATION ENGINE ---", flush=True)
+        print("\n--- PHASE 3: SINGLE-MOVIE CONTENT RECOMMENDATIONS ---", flush=True)
         recommender = MovieRecommender(clean_df, max_features=5000, stop_words="english")
         print(f"TF-IDF Feature Matrix Shape : {recommender.get_tfidf_matrix_shape()}", flush=True)
         print(f"Vocabulary Size             : {recommender.get_vocab_size()}", flush=True)
-        print(f"Cosine Similarity Matrix    : {recommender.get_similarity_matrix_shape()}", flush=True)
 
-        test_queries = ["Avatar", "The Dark Knight", "Inception"]
-        for query in test_queries:
-            print(f"\nTop 5 Content-Based Recommendations for '{query}':", flush=True)
-            recs = recommender.recommend(query, top_n=5)
-            for idx, rec in enumerate(recs, 1):
-                print(f"  {idx}. {rec['title']:35s} | Similarity Score: {rec['similarity_score']:.4f}", flush=True)
+        query = "Avatar"
+        p3_recs = recommender.recommend(query, top_n=3)
+        print(f"Top 3 Similar Movies for '{query}':", flush=True)
+        for idx, rec in enumerate(p3_recs, 1):
+            print(f"  {idx}. {rec['title']:35s} | Similarity Score: {rec['similarity_score']:.4f}", flush=True)
 
-        print("\n" + "=" * 75, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASE 1, 2 & 3) PASSED SUCCESSFULLY ---", flush=True)
-        print("=" * 75, flush=True)
+        print("\n--- PHASE 4: PERSONALIZED USER PROFILE RECOMMENDATIONS ---", flush=True)
+        personalizer = PersonalizedRecommender(clean_df, recommender=recommender)
+
+        sample_history = [
+            ("Avatar", 5),
+            ("Aliens", 5),
+            ("The Dark Knight", 4),
+            ("Titanic", 1),
+        ]
+        print(f"Sample User Rating History: {sample_history}", flush=True)
+        user_profile = personalizer.build_user_profile(sample_history)
+        print(f"User Profile Vector Shape : {user_profile.shape}", flush=True)
+
+        p4_recs = personalizer.recommend_for_user(sample_history, top_n=5)
+        print("\nTop 5 Personalized Recommendations for User:", flush=True)
+        for idx, rec in enumerate(p4_recs, 1):
+            print(f"  {idx}. {rec['title']:35s} | Personalized Score: {rec['personalized_score']:.4f}", flush=True)
+
+        print("\n" + "=" * 80, flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3 & 4) PASSED SUCCESSFULLY ---", flush=True)
+        print("=" * 80, flush=True)
 
     except Exception as e:
         print(f"\n[ERROR] Pipeline verification failed: {e}", file=sys.stderr, flush=True)
