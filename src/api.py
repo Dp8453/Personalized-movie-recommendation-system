@@ -160,17 +160,25 @@ def key_error_handler(request: Request, exc: KeyError):
 
 # --- Pydantic Request Models ---
 
+try:
+    from pydantic import BaseModel, Field, ValidationError, field_validator
+except ImportError:
+    from pydantic import BaseModel, Field, ValidationError, validator as field_validator  # type: ignore
+
+
 class RatingItem(BaseModel):
     title: str = Field(..., description="Movie title string", min_length=1)
     rating: int = Field(..., description="Integer rating between 1 and 5", ge=1, le=5)
 
-    @validator("rating", pre=True)
+    @field_validator("rating", mode="before")
+    @classmethod
     def check_rating_not_bool(cls, v):
         if isinstance(v, bool):
             raise ValueError("Rating must be an integer between 1 and 5, not boolean.")
         return v
 
-    @validator("title")
+    @field_validator("title")
+    @classmethod
     def check_title_non_empty(cls, v):
         if not v or not str(v).strip():
             raise ValueError("Movie title cannot be empty or blank.")
@@ -178,16 +186,18 @@ class RatingItem(BaseModel):
 
 
 class PersonalizedRecommendRequest(BaseModel):
-    history: List[RatingItem] = Field(..., description="User rating history entries", min_items=1)
+    history: List[RatingItem] = Field(..., description="User rating history entries", min_length=1)
     top_n: int = Field(5, description="Number of top recommendations to return", gt=0)
 
-    @validator("top_n", pre=True)
+    @field_validator("top_n", mode="before")
+    @classmethod
     def check_top_n_not_bool(cls, v):
         if isinstance(v, bool):
             raise ValueError("top_n must be a positive integer > 0, not boolean.")
         return v
 
-    @validator("history")
+    @field_validator("history")
+    @classmethod
     def check_no_duplicates(cls, v):
         if not v:
             raise ValueError("User rating history cannot be empty.")
@@ -206,19 +216,22 @@ class HybridRecommendRequest(BaseModel):
     alpha: float = Field(0.5, description="Hybrid fusion parameter in range [0.0, 1.0]", ge=0.0, le=1.0)
     top_n: int = Field(5, description="Number of recommendations to return", gt=0)
 
-    @validator("alpha", pre=True)
+    @field_validator("alpha", mode="before")
+    @classmethod
     def check_alpha(cls, v):
         if isinstance(v, bool):
             raise ValueError("alpha must be a float/int between 0.0 and 1.0, not boolean.")
         return v
 
-    @validator("top_n", pre=True)
+    @field_validator("top_n", mode="before")
+    @classmethod
     def check_top_n(cls, v):
         if isinstance(v, bool):
             raise ValueError("top_n must be an integer > 0, not boolean.")
         return v
 
-    @validator("user_id", pre=True)
+    @field_validator("user_id", mode="before")
+    @classmethod
     def check_user_id(cls, v):
         if isinstance(v, bool):
             raise ValueError("user_id must be an integer, not boolean.")
@@ -232,7 +245,8 @@ class ExplainRecommendRequest(BaseModel):
     history: Optional[List[RatingItem]] = Field(None, description="User rating history")
     alpha: float = Field(0.5, description="Hybrid fusion weight", ge=0.0, le=1.0)
 
-    @validator("alpha", pre=True)
+    @field_validator("alpha", mode="before")
+    @classmethod
     def check_alpha(cls, v):
         if isinstance(v, bool):
             raise ValueError("alpha must be a float/int between 0.0 and 1.0, not boolean.")
