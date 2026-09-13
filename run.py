@@ -19,6 +19,7 @@ from src.recommender import MovieRecommender
 from src.personalizer import PersonalizedRecommender
 from src.evaluator import evaluate_scenarios, evaluate_recommendations
 from src.collaborative_filter import ItemBasedCollaborativeRecommender
+from src.hybrid_recommender import HybridMovieRecommender
 
 
 def main():
@@ -115,12 +116,30 @@ def main():
             print("Top 3 Collaborative Personalized Recommendations for User 1:", flush=True)
             for idx, rec in enumerate(cf_user_recs, 1):
                 print(f"  {idx}. {rec['title']:35s} | Collaborative Score: {rec['collaborative_score']:.4f}", flush=True)
+
+            print("\n--- PHASE 7: HYBRID MOVIE RECOMMENDATION SYSTEM ---", flush=True)
+            hybrid_rec = HybridMovieRecommender(
+                collaborative_recommender=cf_recommender,
+                personalizer=personalizer,
+                movies_df=movies_df,
+                tmdb_df=clean_df,
+            )
+            hybrid_rec.fit(ratings_df)
+            mapped_c = hybrid_rec.mapping_stats["mapped_movies"]
+            total_ml_c = hybrid_rec.mapping_stats["total_movielens_movies"]
+            cov_p = hybrid_rec.mapping_stats["coverage_percentage"]
+            print(f"Title Identity Alignment Mapped : {mapped_c:,} / {total_ml_c:,} ({cov_p:.2f}%)", flush=True)
+
+            h_recs = hybrid_rec.recommend(user_id=1, alpha=0.5, top_n=3)
+            print("Top 3 Hybrid Recommendations (alpha=0.50) for User 1:", flush=True)
+            for idx, rec in enumerate(h_recs, 1):
+                print(f"  {idx}. {rec['title']:35s} | Hybrid Score: {rec['hybrid_score']:.4f} (Content: {rec['norm_content_score']:.4f}, CF: {rec['norm_cf_score']:.4f})", flush=True)
         else:
             print("MovieLens dataset not found in data/raw/movielens/ml-latest-small/.", flush=True)
-            print("Run scratch/download_movielens.py according to README.md to run Phase 6 demonstration.", flush=True)
+            print("Run scratch/download_movielens.py according to README.md to run Phase 6 & 7 demonstration.", flush=True)
 
         print("\n" + "=" * 80, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5 & 6) PASSED SUCCESSFULLY ---", flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5, 6 & 7) PASSED SUCCESSFULLY ---", flush=True)
         print("=" * 80, flush=True)
 
     except Exception as e:
