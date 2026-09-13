@@ -3,7 +3,7 @@
 A content-based and collaborative-filtering movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, item-based collaborative filtering, similarity ranking, and offline evaluation metrics.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 7 COMPLETED**
+> **CURRENT PROJECT STATUS: PHASE 8 COMPLETED**
 > - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
 > - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
 > - **Phase 3 (Completed)**: TF-IDF Vectorization (`max_features=5000`, `stop_words='english'`), Cosine Similarity Matrix Modeling, Case-Insensitive Title Lookup, and Content-Based Recommendation Engine.
@@ -11,6 +11,7 @@ A content-based and collaborative-filtering movie recommendation engine built us
 > - **Phase 5 (Completed)**: Offline Evaluation Framework (Precision@K, Recall@K, NDCG@K) using a deterministic held-out preference protocol.
 > - **Phase 6 (Completed)**: Item-Based Collaborative Filtering (`ItemBasedCollaborativeRecommender`) using genuine user interaction data from **MovieLens latest-small** and leakage-safe temporal evaluation.
 > - **Phase 7 (Completed)**: Hybrid Movie Recommendation System (`HybridMovieRecommender`), candidate pool union ($N_{\text{cand}}=100$), Min-Max score normalization, title identity mapping alignment, and alpha ablation benchmarking.
+> - **Phase 8 (Completed)**: Explainable Recommendation Analysis Layer (`RecommendationExplainer`), transparently decomposing model recommendations into factual content metadata overlaps, collaborative item-item rating contributions, and hybrid score weights with human-readable summary generation.
 > - **Future Phases (Upcoming)**: Web API Service (FastAPI) and Frontend UI (Streamlit).
 >
 > **DATASET POLICY & DISCLAIMER**:
@@ -40,9 +41,10 @@ A content-based and collaborative-filtering movie recommendation engine built us
              [ Hybrid Movie Recommender ]
              score = α * norm_content + (1 - α) * norm_cf
                           │
-                          ▼  ◄── PHASE 5, 6 & 7
-             [ Offline Evaluation Framework ]
-             (Precision@K, Recall@K, NDCG@K)
+         ┌────────────────┴────────────────┐
+         ▼                                 ▼  ◄── PHASE 8
+[ Offline Evaluation Framework ]  [ Recommendation Explainer ]
+ (Precision@K, Recall@K, NDCG@K)   (Content, CF & Hybrid Evidence)
 ```
 
 ---
@@ -78,6 +80,24 @@ Phase 7 fuses Phase 4 personalized content-based recommendation and Phase 6 item
 
 ---
 
+## 💡 Phase 8 — Explainable Recommendation Analysis Layer
+
+### 1. Explainability Layer Design & Motivation
+Phase 8 introduces `RecommendationExplainer` in `src/explanation.py`, answering *"Why was this movie recommended?"* with factual model evidence rather than generic black-box assertions or synthesized text.
+
+- **Content Evidence Breakdown**: Extracts specific metadata overlaps between the recommended item and movies positively rated ($\ge 4.0$) in the user's historical profile:
+  - Shared genres, shared keywords, shared director, shared cast members.
+  - Non-zero overlapping TF-IDF terms extracted directly from preprocessed text vectors.
+- **Collaborative Evidence Breakdown**: Decomposes collaborative predictions by inspecting the top contributing rated movies in the user's history:
+  - Individual rating weight $r(u, m)$, item-item similarity $S(m, c)$, and calculated contribution product $S(m, c) \cdot r(u, m)$.
+- **Hybrid Score Decomposition**: Breaks down raw and normalized candidate scores, fusion parameter $\alpha$, weighted component contributions $\alpha \cdot \text{norm\_content}$ vs $(1-\alpha) \cdot \text{norm\_cf}$, and identifies the dominant recommendation branch.
+- **Human-Readable Summary Generation**: Produces clear, concise, deterministic explanation strings highlighting primary recommendation drivers.
+
+> [!IMPORTANT]
+> **Data Leakage Safeguard**: Explanations strictly inspect historical training ratings ($T \le \text{split}$). Future held-out evaluation ratings are NEVER accessed as explanation evidence.
+
+---
+
 ## 📁 Repository Structure
 
 ```
@@ -102,7 +122,8 @@ Personalized-movie-recommendation-system/
 │   ├── 04_user_personalization.ipynb
 │   ├── 05_model_evaluation.ipynb
 │   ├── 06_collaborative_filtering.ipynb
-│   └── 07_hybrid_recommendation.ipynb
+│   ├── 07_hybrid_recommendation.ipynb
+│   └── 08_recommendation_explainability.ipynb
 │
 ├── src/
 │   ├── __init__.py
@@ -112,7 +133,8 @@ Personalized-movie-recommendation-system/
 │   ├── personalizer.py
 │   ├── evaluator.py
 │   ├── collaborative_filter.py
-│   └── hybrid_recommender.py
+│   ├── hybrid_recommender.py
+│   └── explanation.py
 │
 ├── tests/
 │   ├── __init__.py
@@ -122,7 +144,8 @@ Personalized-movie-recommendation-system/
 │   ├── test_personalizer.py
 │   ├── test_evaluator.py
 │   ├── test_collaborative_filter.py
-│   └── test_hybrid_recommender.py
+│   ├── test_hybrid_recommender.py
+│   └── test_explanation.py
 │
 ├── .gitignore
 ├── README.md
@@ -146,7 +169,7 @@ pip install -r requirements.txt
 
 ### 2. Download Optional MovieLens Dataset
 
-To run Phase 6 & 7 collaborative and hybrid recommendation on genuine user interaction data, download MovieLens latest-small:
+To run Phase 6, 7 & 8 collaborative, hybrid, and explainable recommendation on genuine user interaction data, download MovieLens latest-small:
 
 ```bash
 python -c "
@@ -161,7 +184,7 @@ zipfile.ZipFile(z).extractall(d)
 
 ### 3. Run Main Pipeline Verification
 
-Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, evaluation, collaborative filtering, and hybrid recommendation:
+Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, evaluation, collaborative filtering, hybrid recommendation, and explainable analysis:
 
 ```bash
 python run.py
@@ -169,18 +192,18 @@ python run.py
 
 ### 4. Run Complete Unit Test Suite
 
-Execute all 106 unit tests across Phases 1–7:
+Execute all 129 unit tests across Phases 1–8:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-### 5. Explore Hybrid Recommendation Notebook
+### 5. Explore Explainability Notebook
 
 Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/07_hybrid_recommendation.ipynb
+jupyter notebook notebooks/08_recommendation_explainability.ipynb
 ```
 
 ---
@@ -194,4 +217,5 @@ jupyter notebook notebooks/07_hybrid_recommendation.ipynb
 - [x] **Phase 5**: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
 - [x] **Phase 6**: Item-Based Collaborative Filtering Engine & Temporal Evaluation
 - [x] **Phase 7**: Hybrid Movie Recommendation System, Candidate Pool Union, Min-Max Normalization & Ablation Evaluation
-- [ ] **Phase 8**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
+- [x] **Phase 8**: Explainable Recommendation Analysis Layer (`RecommendationExplainer`) & Summary Generation
+- [ ] **Phase 9**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)

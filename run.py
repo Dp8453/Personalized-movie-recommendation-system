@@ -20,6 +20,7 @@ from src.personalizer import PersonalizedRecommender
 from src.evaluator import evaluate_scenarios, evaluate_recommendations
 from src.collaborative_filter import ItemBasedCollaborativeRecommender
 from src.hybrid_recommender import HybridMovieRecommender
+from src.explanation import RecommendationExplainer
 
 
 def main():
@@ -134,12 +135,26 @@ def main():
             print("Top 3 Hybrid Recommendations (alpha=0.50) for User 1:", flush=True)
             for idx, rec in enumerate(h_recs, 1):
                 print(f"  {idx}. {rec['title']:35s} | Hybrid Score: {rec['hybrid_score']:.4f} (Content: {rec['norm_content_score']:.4f}, CF: {rec['norm_cf_score']:.4f})", flush=True)
+
+            print("\n--- PHASE 8: RECOMMENDATION EXPLAINABILITY LAYER ---", flush=True)
+            explainer = RecommendationExplainer(
+                hybrid_recommender=hybrid_rec,
+                collaborative_recommender=cf_recommender,
+                personalizer=personalizer,
+                movies_df=clean_df,
+                movielens_movies_df=movies_df,
+            )
+            top_rec_id = h_recs[0]["movieId"]
+            exp = explainer.explain_hybrid_recommendation(user_id=1, target_movie_id=top_rec_id, alpha=0.5)
+            print(f"Explanation for User 1 Top Rec '{h_recs[0]['title']}':", flush=True)
+            print(f"  Dominant Branch : {exp['hybrid_evidence']['dominant_branch']}", flush=True)
+            print(f"  Summary         : {exp['summary']}", flush=True)
         else:
             print("MovieLens dataset not found in data/raw/movielens/ml-latest-small/.", flush=True)
-            print("Run scratch/download_movielens.py according to README.md to run Phase 6 & 7 demonstration.", flush=True)
+            print("Run scratch/download_movielens.py according to README.md to run Phase 6, 7 & 8 demonstration.", flush=True)
 
         print("\n" + "=" * 80, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5, 6 & 7) PASSED SUCCESSFULLY ---", flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5, 6, 7 & 8) PASSED SUCCESSFULLY ---", flush=True)
         print("=" * 80, flush=True)
 
     except Exception as e:
