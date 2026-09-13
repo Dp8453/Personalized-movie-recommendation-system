@@ -6,6 +6,7 @@ Phase 1: Data Ingestion & ID-Based Merging
 Phase 2: Data Preprocessing & Unified Tags Construction
 Phase 3: TF-IDF Vectorization & Single-Movie Recommendations
 Phase 4: Weighted User Profile Modeling & Personalized Recommendations
+Phase 5: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
 """
 
 import sys
@@ -15,6 +16,7 @@ from src.data_loader import load_movies
 from src.preprocessor import preprocess_data
 from src.recommender import MovieRecommender
 from src.personalizer import PersonalizedRecommender
+from src.evaluator import evaluate_scenarios, evaluate_recommendations
 
 
 def main():
@@ -68,8 +70,28 @@ def main():
         for idx, rec in enumerate(p4_recs, 1):
             print(f"  {idx}. {rec['title']:35s} | Personalized Score: {rec['personalized_score']:.4f}", flush=True)
 
+        print("\n--- PHASE 5: OFFLINE MODEL EVALUATION ---", flush=True)
+        eval_scenarios = [
+            {
+                "name": "Nolan Superhero/Sci-Fi",
+                "user_history": [("Batman Begins", 5), ("The Dark Knight", 5), ("Titanic", 1)],
+                "relevant_movies": ["The Dark Knight Rises", "Batman Returns"],
+            },
+            {
+                "name": "Pixar Animated Family",
+                "user_history": [("Toy Story", 5), ("Toy Story 2", 5), ("The Godfather", 1)],
+                "relevant_movies": ["Toy Story 3", "Monsters, Inc."],
+            },
+        ]
+        eval_results = evaluate_scenarios(personalizer, eval_scenarios, k=5)
+        agg = eval_results["aggregate"]
+        print(f"Evaluated {agg['num_scenarios']} Scenarios at K=5:", flush=True)
+        print(f"  Mean Precision@5 : {agg['mean_precision@5']:.4f}", flush=True)
+        print(f"  Mean Recall@5    : {agg['mean_recall@5']:.4f}", flush=True)
+        print(f"  Mean NDCG@5      : {agg['mean_ndcg@5']:.4f}", flush=True)
+
         print("\n" + "=" * 80, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3 & 4) PASSED SUCCESSFULLY ---", flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4 & 5) PASSED SUCCESSFULLY ---", flush=True)
         print("=" * 80, flush=True)
 
     except Exception as e:

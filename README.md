@@ -1,16 +1,18 @@
 # Personalized Movie Recommendation System
 
-A content-based movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, and similarity ranking.
+A content-based movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, similarity ranking, and offline evaluation metrics.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 4 COMPLETED**
+> **CURRENT PROJECT STATUS: PHASE 5 COMPLETED**
 > - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
 > - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
 > - **Phase 3 (Completed)**: TF-IDF Vectorization (`max_features=5000`, `stop_words='english'`), Cosine Similarity Matrix Modeling, Case-Insensitive Title Lookup, and Content-Based Recommendation Engine.
 > - **Phase 4 (Completed)**: User Rating Preference Modeling, Weighted User Profile Construction ($\mathbf{u} = \frac{\sum w_i \mathbf{v}_i}{\sum |w_i|}$), Rated Movie Exclusion, and Content-Based Personalization Engine.
-> - **Future Phases (Upcoming)**: Offline Evaluation Metrics (Precision@K, Recall@K, NDCG@K), FastAPI Service, and Streamlit UI.
+> - **Phase 5 (Completed)**: Offline Evaluation Framework (Precision@K, Recall@K, NDCG@K) using a deterministic held-out preference protocol.
+> - **Future Phases (Upcoming)**: Web API Service (FastAPI) and Frontend UI (Streamlit).
 >
-> **NOTE ON PERSONALIZATION MODEL**: This phase implements **CONTENT-BASED PERSONALIZATION** by aggregating TF-IDF feature vectors of user-rated movies into a personalized user preference profile. It does **NOT** use Collaborative Filtering, deep learning, or external user databases.
+> **CRITICAL DATASET LIMITATION DISCLAIMER**:
+> The TMDB 5000 Movie Dataset contains rich metadata (genres, keywords, cast, crew, overviews) but does **NOT** contain genuine multi-user rating histories or real user interaction logs. Therefore, the offline evaluation framework uses a **deterministic held-out preference protocol** based on thematic user scenarios. The resulting metric scores evaluate the recommendation engine's ability to retrieve held-out related items under controlled conditions and must **NOT** be interpreted as real-world production user performance.
 
 ---
 
@@ -42,8 +44,12 @@ A content-based movie recommendation engine built using movie metadata, Natural 
        │  ├── Rated Movie Exclusion (History movies never returned)
        │  └── Top-N Personalized Movie Recommendations with Scores
        │
-       ▼  ◄── PHASE 5 (UPCOMING)
-  [ Offline Evaluation (Precision@K, Recall@K, NDCG@K) ]
+       ▼  ◄── PHASE 5 (COMPLETED: Offline Evaluation Metrics in src/evaluator.py)
+  [ Offline Evaluation Framework ]
+       │  ├── Precision@K = (relevant in top-K) / K
+       │  ├── Recall@K = (relevant in top-K) / |relevant|
+       │  ├── NDCG@K = DCG@K / IDCG@K (Position Discounting)
+       │  └── Data Leakage Check: set(user_history) & set(held_out_relevant) == empty
        │
        ▼  ◄── PHASE 6 (UPCOMING)
   [ Production Web Service (FastAPI) & Frontend UI (Streamlit) ]
@@ -51,25 +57,26 @@ A content-based movie recommendation engine built using movie metadata, Natural 
 
 ---
 
-## 📊 Phase 4 Personalization Summary
+## 📈 Phase 5 — Offline Recommendation Evaluation Framework
 
-- **User Rating Model**: Input rating history as a list of `(title, rating)` tuples where rating is an integer in `{1, 2, 3, 4, 5}`.
-- **Preference Weight Transformation**:
-  - `1` $\rightarrow -1.0$ (strongly disliked)
-  - `2` $\rightarrow -0.5$ (disliked)
-  - `3` $\rightarrow 0.0$ (neutral)
-  - `4` $\rightarrow +0.5$ (liked)
-  - `5` $\rightarrow +1.0$ (strongly liked)
-- **User Profile Construction Formula**:
-  $$\mathbf{u} = \frac{\sum_i w_i \cdot \mathbf{v}_i}{\sum_i |w_i|}$$
-  Generates a single 5,000-dimensional preference vector $\mathbf{u}$.
-- **Computational Efficiency**: Computes Cosine Similarity between single profile vector $\mathbf{u}$ `(1, 5000)` and all movie vectors `V` `(4803, 5000)`, running in $O(N)$ time (< 0.01 seconds).
-- **Core Engine Features (`src/personalizer.py`)**:
-  - `PersonalizedRecommender` class.
-  - Validates ratings, rejects duplicates and non-integer/out-of-range ratings with `ValueError`.
-  - Case-insensitive title resolution.
-  - Strict exclusion of all movies present in the user's rating history.
-  - Handles the net-weight zero `[5, 1]` preference case cleanly ($\sum |w_i| = 2.0 \neq 0$).
+### 1. Evaluation Protocol & Ground-Truth Selection Rules
+Because TMDB 5000 lacks real user logs, we evaluate recommendation quality using a **held-out preference protocol**:
+1. **User History Construction**: Define user rating profiles containing positive preferences (ratings 4–5) and negative preferences (ratings 1–2).
+2. **Held-Out Ground Truth**: Select target relevant movies based on explicit, reproducible rules (e.g. franchise sequels/prequels or shared director/universe connections absent from input history).
+3. **Data Leakage Safeguard**: Programmatically enforce that `set(user_history_titles) & set(held_out_relevant_titles) == empty set`.
+4. **Metric Calculation**: Compare generated recommendations against ground truth using Precision@K, Recall@K, and NDCG@K.
+
+### 2. Metric Definitions & Formulas
+
+- **Precision@K**:
+  $$\text{Precision}@K = \frac{|\text{Top-}K \text{ Recommendations} \cap \text{Relevant Items}|}{K}$$
+
+- **Recall@K**:
+  $$\text{Recall}@K = \frac{|\text{Top-}K \text{ Recommendations} \cap \text{Relevant Items}|}{|\text{Relevant Items}|}$$
+
+- **NDCG@K (Normalized Discounted Cumulative Gain)**:
+  $$\text{DCG}@K = \sum_{i=1}^{\min(K, |rec|)} \frac{2^{rel_i} - 1}{\log_2(i + 1)}, \quad \text{IDCG}@K = \sum_{i=1}^{\min(K, |relevant|)} \frac{1}{\log_2(i + 1)}$$
+  $$\text{NDCG}@K = \frac{\text{DCG}@K}{\text{IDCG}@K}$$
 
 ---
 
@@ -89,14 +96,16 @@ Personalized-movie-recommendation-system/
 │   ├── 01_data_exploration.ipynb
 │   ├── 02_data_preprocessing.ipynb
 │   ├── 03_recommendation_engine.ipynb
-│   └── 04_user_personalization.ipynb
+│   ├── 04_user_personalization.ipynb
+│   └── 05_model_evaluation.ipynb
 │
 ├── src/
 │   ├── __init__.py
 │   ├── data_loader.py
 │   ├── preprocessor.py
 │   ├── recommender.py
-│   └── personalizer.py
+│   ├── personalizer.py
+│   └── evaluator.py
 │
 ├── docs/
 │   └── reference-analysis.md
@@ -106,7 +115,8 @@ Personalized-movie-recommendation-system/
 │   ├── test_data_loader.py
 │   ├── test_preprocessor.py
 │   ├── test_recommender.py
-│   └── test_personalizer.py
+│   ├── test_personalizer.py
+│   └── test_evaluator.py
 │
 ├── .gitignore
 ├── README.md
@@ -130,7 +140,7 @@ pip install -r requirements.txt
 
 ### 2. Run Main Pipeline Verification
 
-Execute data loading, preprocessing, single-movie lookup, and personalized user profile recommendation:
+Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, and evaluation:
 
 ```bash
 python run.py
@@ -138,18 +148,18 @@ python run.py
 
 ### 3. Run Complete Unit Test Suite
 
-Execute all 45 unit tests across Phases 1–4:
+Execute all 59 unit tests across Phases 1–5:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-### 4. Explore Personalization Notebook
+### 4. Explore Model Evaluation Notebook
 
 Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/04_user_personalization.ipynb
+jupyter notebook notebooks/05_model_evaluation.ipynb
 ```
 
 ---
@@ -160,5 +170,5 @@ jupyter notebook notebooks/04_user_personalization.ipynb
 - [x] **Phase 2**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing & Tags Construction
 - [x] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Content-Based Recommendation Engine
 - [x] **Phase 4**: User Preference Rating Model, Weighted User Profile Vector Construction & Content Personalization
-- [ ] **Phase 5**: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
+- [x] **Phase 5**: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
 - [ ] **Phase 6**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
