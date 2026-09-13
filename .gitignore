@@ -1,6 +1,6 @@
-# Raw & Processed Datasets (Kept locally, excluded from git tracking due to size ~45.7MB)
-data/raw/*.csv
-data/processed/*.csv
+# Raw & Processed Datasets (Kept locally, excluded from git tracking)
+data/raw/
+data/processed/
 
 # Python bytecode and cache
 __pycache__/

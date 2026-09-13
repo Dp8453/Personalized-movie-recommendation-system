@@ -7,6 +7,7 @@ Phase 2: Data Preprocessing & Unified Tags Construction
 Phase 3: TF-IDF Vectorization & Single-Movie Recommendations
 Phase 4: Weighted User Profile Modeling & Personalized Recommendations
 Phase 5: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
+Phase 6: Item-Based Collaborative Filtering (MovieLens Interaction Data)
 """
 
 import sys
@@ -17,6 +18,7 @@ from src.preprocessor import preprocess_data
 from src.recommender import MovieRecommender
 from src.personalizer import PersonalizedRecommender
 from src.evaluator import evaluate_scenarios, evaluate_recommendations
+from src.collaborative_filter import ItemBasedCollaborativeRecommender
 
 
 def main():
@@ -90,8 +92,35 @@ def main():
         print(f"  Mean Recall@5    : {agg['mean_recall@5']:.4f}", flush=True)
         print(f"  Mean NDCG@5      : {agg['mean_ndcg@5']:.4f}", flush=True)
 
+        print("\n--- PHASE 6: ITEM-BASED COLLABORATIVE FILTERING ---", flush=True)
+        ml_ratings_path = Path("data") / "raw" / "movielens" / "ml-latest-small" / "ratings.csv"
+        ml_movies_path = Path("data") / "raw" / "movielens" / "ml-latest-small" / "movies.csv"
+
+        if ml_ratings_path.exists() and ml_movies_path.exists():
+            ratings_df = pd.read_csv(ml_ratings_path)
+            movies_df = pd.read_csv(ml_movies_path)
+            cf_recommender = ItemBasedCollaborativeRecommender(
+                min_ratings_per_movie=5, min_ratings_per_user=5, movies_df=movies_df
+            )
+            cf_recommender.fit(ratings_df)
+            print(f"MovieLens Ratings Loaded    : {len(ratings_df):,} ratings across {cf_recommender.stats['filtered_users']} users", flush=True)
+            print(f"Item-User Sparse Matrix     : {cf_recommender.item_user_matrix.shape}", flush=True)
+
+            sims = cf_recommender.get_similar_items(1, top_n=3)
+            print("Top 3 Collaborative Similar Movies to 'Toy Story (1995)' (movieId=1):", flush=True)
+            for idx, item in enumerate(sims, 1):
+                print(f"  {idx}. {item['title']:35s} | Similarity Score: {item['similarity_score']:.4f}", flush=True)
+
+            cf_user_recs = cf_recommender.recommend(user_id=1, top_n=3)
+            print("Top 3 Collaborative Personalized Recommendations for User 1:", flush=True)
+            for idx, rec in enumerate(cf_user_recs, 1):
+                print(f"  {idx}. {rec['title']:35s} | Collaborative Score: {rec['collaborative_score']:.4f}", flush=True)
+        else:
+            print("MovieLens dataset not found in data/raw/movielens/ml-latest-small/.", flush=True)
+            print("Run scratch/download_movielens.py according to README.md to run Phase 6 demonstration.", flush=True)
+
         print("\n" + "=" * 80, flush=True)
-        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4 & 5) PASSED SUCCESSFULLY ---", flush=True)
+        print("--- ALL PIPELINE CHECKS (PHASES 1, 2, 3, 4, 5 & 6) PASSED SUCCESSFULLY ---", flush=True)
         print("=" * 80, flush=True)
 
     except Exception as e:

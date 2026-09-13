@@ -1,82 +1,62 @@
 # Personalized Movie Recommendation System
 
-A content-based movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, similarity ranking, and offline evaluation metrics.
+A content-based and collaborative-filtering movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, user preference modeling, item-based collaborative filtering, similarity ranking, and offline evaluation metrics.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 5 COMPLETED**
+> **CURRENT PROJECT STATUS: PHASE 6 COMPLETED**
 > - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
 > - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
 > - **Phase 3 (Completed)**: TF-IDF Vectorization (`max_features=5000`, `stop_words='english'`), Cosine Similarity Matrix Modeling, Case-Insensitive Title Lookup, and Content-Based Recommendation Engine.
 > - **Phase 4 (Completed)**: User Rating Preference Modeling, Weighted User Profile Construction ($\mathbf{u} = \frac{\sum w_i \mathbf{v}_i}{\sum |w_i|}$), Rated Movie Exclusion, and Content-Based Personalization Engine.
 > - **Phase 5 (Completed)**: Offline Evaluation Framework (Precision@K, Recall@K, NDCG@K) using a deterministic held-out preference protocol.
+> - **Phase 6 (Completed)**: Item-Based Collaborative Filtering (`ItemBasedCollaborativeRecommender`) using genuine user interaction data from **MovieLens latest-small** and leakage-safe temporal evaluation.
 > - **Future Phases (Upcoming)**: Web API Service (FastAPI) and Frontend UI (Streamlit).
 >
-> **CRITICAL DATASET LIMITATION DISCLAIMER**:
-> The TMDB 5000 Movie Dataset contains rich metadata (genres, keywords, cast, crew, overviews) but does **NOT** contain genuine multi-user rating histories or real user interaction logs. Therefore, the offline evaluation framework uses a **deterministic held-out preference protocol** based on thematic user scenarios. The resulting metric scores evaluate the recommendation engine's ability to retrieve held-out related items under controlled conditions and must **NOT** be interpreted as real-world production user performance.
+> **DATASET POLICY & DISCLAIMER**:
+> 1. TMDB 5000 is a movie metadata dataset containing no multi-user interaction logs and is **NOT** used for collaborative filtering.
+> 2. MovieLens latest-small (100,836 ratings across 610 users and 9,724 movies) provides genuine user behavioral interactions for Phase 6. Raw MovieLens files are kept locally in `data/raw/movielens/` and strictly excluded from Git tracking.
+> 3. MovieLens provides genuine user interaction logs, but offline evaluation metrics on benchmark datasets do **NOT** guarantee real-world production performance.
 
 ---
 
 ## 🚀 End-to-End Project Architecture & Pipeline
 
 ```
-  [ Raw Movie Metadata & Credits CSVs ]
-       │
-       ▼  ◄── PHASE 1 (COMPLETED: Primary Key ID Merging)
-  [ Data Preprocessing & Feature Engineering ]
-       │  ├── JSON Parsing (genres, keywords, cast, crew)
-       │  ├── Top 3 Lead Cast & Director Extraction
-       │  └── Unified Tags Construction (overview + genres + keywords + cast + director)
-       │
-       ▼  ◄── PHASE 2 (COMPLETED: Exported to data/processed/clean_movies.csv)
-  [ Text Vectorization (TF-IDF) ]
-       │  ├── TfidfVectorizer(max_features=5000, stop_words='english')
-       │  └── TF-IDF Feature Matrix V Shape: (4803, 5000)
-       │
-       ▼  ◄── PHASE 3 (COMPLETED: Single-Movie Content Engine)
-  [ User Rating History & Preference Modeling ]
-       │  ├── Input Ratings: 1..5 Integer Ratings [("Avatar", 5), ("Titanic", 1)]
-       │  ├── Preference Weight Mapping: 1 -> -1.0, 2 -> -0.5, 3 -> 0.0, 4 -> +0.5, 5 -> +1.0
-       │  └── User Preference Profile Vector: u = sum(w_i * v_i) / sum(|w_i|)  Shape: (1, 5000)
-       │
-       ▼  ◄── PHASE 4 (COMPLETED: Content-Based Personalization Engine in src/personalizer.py)
-  [ Personalized Cosine Similarity & Ranking ]
-       │  ├── Single-Vector Cosine Similarity: cosine_similarity(u, V) Shape: (1, 4803)
-       │  ├── Rated Movie Exclusion (History movies never returned)
-       │  └── Top-N Personalized Movie Recommendations with Scores
-       │
-       ▼  ◄── PHASE 5 (COMPLETED: Offline Evaluation Metrics in src/evaluator.py)
-  [ Offline Evaluation Framework ]
-       │  ├── Precision@K = (relevant in top-K) / K
-       │  ├── Recall@K = (relevant in top-K) / |relevant|
-       │  ├── NDCG@K = DCG@K / IDCG@K (Position Discounting)
-       │  └── Data Leakage Check: set(user_history) & set(held_out_relevant) == empty
-       │
-       ▼  ◄── PHASE 6 (UPCOMING)
-  [ Production Web Service (FastAPI) & Frontend UI (Streamlit) ]
+  [ TMDB 5000 Metadata CSVs ]          [ MovieLens Interaction CSVs ]
+       │                                     │
+       ▼  ◄── PHASE 1 & 2                   ▼  ◄── PHASE 6
+  [ Text Vectorization & Tags ]       [ Sparse Item x User Matrix R ]
+       │                                     │
+       ▼  ◄── PHASE 3 & 4                   ▼  ◄── PHASE 6
+  [ Content User Profile Vector u ]   [ Item-Item Cosine Similarity S ]
+       │                                     │
+       ▼                                     ▼
+  [ Content Personalization Engine ]  [ Collaborative Filtering Engine ]
+       │                                     │
+       └──────────────────┬──────────────────┘
+                          │
+                          ▼  ◄── PHASE 5 & 6
+             [ Offline Evaluation Framework ]
+             (Precision@K, Recall@K, NDCG@K)
 ```
 
 ---
 
-## 📈 Phase 5 — Offline Recommendation Evaluation Framework
+## 🤝 Phase 6 — Item-Based Collaborative Filtering
 
-### 1. Evaluation Protocol & Ground-Truth Selection Rules
-Because TMDB 5000 lacks real user logs, we evaluate recommendation quality using a **held-out preference protocol**:
-1. **User History Construction**: Define user rating profiles containing positive preferences (ratings 4–5) and negative preferences (ratings 1–2).
-2. **Held-Out Ground Truth**: Select target relevant movies based on explicit, reproducible rules (e.g. franchise sequels/prequels or shared director/universe connections absent from input history).
-3. **Data Leakage Safeguard**: Programmatically enforce that `set(user_history_titles) & set(held_out_relevant_titles) == empty set`.
-4. **Metric Calculation**: Compare generated recommendations against ground truth using Precision@K, Recall@K, and NDCG@K.
+### 1. Motivation & Architecture
+While Phases 3–4 built a content-based recommendation system from metadata, Phase 6 adds behavioral collaborative filtering capability based on genuine user co-rating patterns in **MovieLens latest-small**.
 
-### 2. Metric Definitions & Formulas
+- **Item-User Sparse Matrix**: Constructs a SciPy CSR sparse matrix $R$ of shape $(\text{num\_movies} \times \text{num\_users})$.
+- **Item-Item Cosine Similarity**: Computes similarity matrix $S(i, j) = \frac{\mathbf{R}_i \cdot \mathbf{R}_j}{\|\mathbf{R}_i\| \|\mathbf{R}_j\|}$ with diagonal $S(i, i) = 0.0$ to exclude self-recommendation.
+- **Personalized Candidate Scoring**:
+  $$\text{score}(c) = \sum_{m \in \text{user\_pos\_movies}} S(m, c) \times \text{rating}(m)$$
+- **Strict Exclusion**: Excludes all movies already rated by the target user.
 
-- **Precision@K**:
-  $$\text{Precision}@K = \frac{|\text{Top-}K \text{ Recommendations} \cap \text{Relevant Items}|}{K}$$
-
-- **Recall@K**:
-  $$\text{Recall}@K = \frac{|\text{Top-}K \text{ Recommendations} \cap \text{Relevant Items}|}{|\text{Relevant Items}|}$$
-
-- **NDCG@K (Normalized Discounted Cumulative Gain)**:
-  $$\text{DCG}@K = \sum_{i=1}^{\min(K, |rec|)} \frac{2^{rel_i} - 1}{\log_2(i + 1)}, \quad \text{IDCG}@K = \sum_{i=1}^{\min(K, |relevant|)} \frac{1}{\log_2(i + 1)}$$
-  $$\text{NDCG}@K = \frac{\text{DCG}@K}{\text{IDCG}@K}$$
+### 2. Leakage-Safe Temporal Evaluation Protocol
+1. **Chronological Split**: Ratings per user are sorted by `timestamp`. Earliest 80% form training history; latest 20% positive ratings ($\ge 4.0$) are held-out test targets.
+2. **Model Fitting Constraint**: Model fitting occurs **STRICTLY on training ratings split**. Held-out test ratings are NEVER seen during model fitting.
+3. **Data Leakage Safeguards**: Programmatically verifies that held-out test items are absent from user training histories and rated training items are never recommended.
 
 ---
 
@@ -86,9 +66,14 @@ Because TMDB 5000 lacks real user logs, we evaluate recommendation quality using
 Personalized-movie-recommendation-system/
 │
 ├── data/
-│   ├── raw/                  # Raw TMDB 5000 CSV files (git-ignored)
+│   ├── raw/                  # Raw CSV files (git-ignored)
 │   │   ├── tmdb_5000_movies.csv
-│   │   └── tmdb_5000_credits.csv
+│   │   ├── tmdb_5000_credits.csv
+│   │   └── movielens/        # MovieLens latest-small CSVs
+│   │       └── ml-latest-small/
+│   │           ├── ratings.csv
+│   │           ├── movies.csv
+│   │           └── links.csv
 │   └── processed/            # Cleaned data output (git-ignored)
 │       └── clean_movies.csv
 │
@@ -97,7 +82,8 @@ Personalized-movie-recommendation-system/
 │   ├── 02_data_preprocessing.ipynb
 │   ├── 03_recommendation_engine.ipynb
 │   ├── 04_user_personalization.ipynb
-│   └── 05_model_evaluation.ipynb
+│   ├── 05_model_evaluation.ipynb
+│   └── 06_collaborative_filtering.ipynb
 │
 ├── src/
 │   ├── __init__.py
@@ -105,10 +91,8 @@ Personalized-movie-recommendation-system/
 │   ├── preprocessor.py
 │   ├── recommender.py
 │   ├── personalizer.py
-│   └── evaluator.py
-│
-├── docs/
-│   └── reference-analysis.md
+│   ├── evaluator.py
+│   └── collaborative_filter.py
 │
 ├── tests/
 │   ├── __init__.py
@@ -116,7 +100,8 @@ Personalized-movie-recommendation-system/
 │   ├── test_preprocessor.py
 │   ├── test_recommender.py
 │   ├── test_personalizer.py
-│   └── test_evaluator.py
+│   ├── test_evaluator.py
+│   └── test_collaborative_filter.py
 │
 ├── .gitignore
 ├── README.md
@@ -138,28 +123,43 @@ cd Personalized-movie-recommendation-system
 pip install -r requirements.txt
 ```
 
-### 2. Run Main Pipeline Verification
+### 2. Download Optional MovieLens Dataset
 
-Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, and evaluation:
+To run Phase 6 collaborative filtering on genuine user interaction data, download MovieLens latest-small:
+
+```bash
+python -c "
+import urllib.request, ssl, zipfile, pathlib
+d = pathlib.Path('data/raw/movielens')
+d.mkdir(parents=True, exist_ok=True)
+z = d / 'ml-latest-small.zip'
+urllib.request.urlretrieve('https://files.grouplens.org/datasets/movielens/ml-latest-small.zip', z, context=ssl._create_unverified_context())
+zipfile.ZipFile(z).extractall(d)
+"
+```
+
+### 3. Run Main Pipeline Verification
+
+Execute data loading, preprocessing, single-movie lookup, personalized user profile recommendation, evaluation, and collaborative filtering:
 
 ```bash
 python run.py
 ```
 
-### 3. Run Complete Unit Test Suite
+### 4. Run Complete Unit Test Suite
 
-Execute all 59 unit tests across Phases 1–5:
+Execute all 87 unit tests across Phases 1–6:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-### 4. Explore Model Evaluation Notebook
+### 5. Explore Collaborative Filtering Notebook
 
 Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/05_model_evaluation.ipynb
+jupyter notebook notebooks/06_collaborative_filtering.ipynb
 ```
 
 ---
@@ -171,4 +171,5 @@ jupyter notebook notebooks/05_model_evaluation.ipynb
 - [x] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Content-Based Recommendation Engine
 - [x] **Phase 4**: User Preference Rating Model, Weighted User Profile Vector Construction & Content Personalization
 - [x] **Phase 5**: Offline Model Evaluation (Precision@K, Recall@K, NDCG@K)
-- [ ] **Phase 6**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
+- [x] **Phase 6**: Item-Based Collaborative Filtering Engine & Temporal Evaluation
+- [ ] **Phase 7**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
