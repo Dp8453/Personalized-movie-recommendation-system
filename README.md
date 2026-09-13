@@ -3,10 +3,11 @@
 A content-based movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, and similarity modeling.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 2 COMPLETED**
+> **CURRENT PROJECT STATUS: PHASE 3 COMPLETED**
 > - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
 > - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
-> - **Future Phases (Upcoming)**: TF-IDF Vectorization, Cosine Similarity, Recommendation Engine, Personalization, Evaluation Metrics, FastAPI, and Streamlit.
+> - **Phase 3 (Completed)**: TF-IDF Vectorization (`max_features=5000`, `stop_words='english'`), Cosine Similarity Matrix Modeling, Case-Insensitive Title Lookup, and Content-Based Recommendation Engine.
+> - **Future Phases (Upcoming)**: User Personalization & Hybrid Ranking, Evaluation Metrics (Precision@K, Recall@K, NDCG@K), FastAPI Service, and Streamlit UI.
 
 ---
 
@@ -18,47 +19,46 @@ A content-based movie recommendation engine built using movie metadata, Natural 
        ▼  ◄── PHASE 1 (COMPLETED)
   [ Data Preprocessing & Feature Engineering ]
        │  ├── JSON Parsing (genres, keywords, cast, crew)
-       │  ├── Top 3 Lead Cast Extraction
-       │  ├── Director Extraction (crew job == 'Director')
+       │  ├── Top 3 Lead Cast & Director Extraction
        │  ├── Entity Space Collapsing ("Sam Worthington" -> "SamWorthington")
-       │  ├── Plot Overview Null Imputation (NaN -> "")
        │  └── Unified Tags Construction (overview + genres + keywords + cast + director)
        │
        ▼  ◄── PHASE 2 (COMPLETED: Exported to data/processed/clean_movies.csv)
-  [ Text Vectorization (TF-IDF) ]
+  [ Text Vectorization (TF-IDF) & Cosine Similarity ]
+       │  ├── TfidfVectorizer(max_features=5000, stop_words='english')
+       │  ├── Sparse Feature Matrix Shape: (4803, 5000)
+       │  └── Pairwise Cosine Similarity Matrix Shape: (4803, 4803)
        │
-       ▼  ◄── PHASE 3 (UPCOMING)
-  [ Similarity Modeling (Cosine Similarity) ]
-       │
-       ▼
+       ▼  ◄── PHASE 3 (COMPLETED: Classical Content-Based Engine in src/recommender.py)
   [ Content-Based Recommendation Engine ]
+       │  ├── Case-Insensitive Title Lookup ("Avatar" == "avatar" == "AVATAR")
+       │  ├── Query Movie Self-Exclusion & Rank Sorting
+       │  └── Top-N Recommended Movies with Similarity Scores
        │
        ▼
-  [ Personalization & Ranking ]
+  [ Personalization & Hybrid Ranking ]
        │
-       ▼
+       ▼  ◄── PHASE 4 (UPCOMING)
   [ Offline Evaluation (Precision@K, Recall@K, NDCG@K) ]
        │
-       ▼
-  [ Production Web Service (FastAPI) ]
-       │
-       ▼
-  [ User Interface (Streamlit) ]
+       ▼  ◄── PHASE 5 (UPCOMING)
+  [ Production Web Service (FastAPI) & Frontend UI (Streamlit) ]
 ```
 
 ---
 
-## 📊 Phase 2 Feature Engineering Summary
+## 📊 Phase 3 Recommendation Engine Summary
 
-- **Processed Output**: `data/processed/clean_movies.csv` (4,803 rows × 8 columns, Git-ignored).
-- **Metadata Extraction Rules**:
-  - `genres`: JSON list extracted into genre string tokens.
-  - `keywords`: JSON list extracted into thematic keyword tokens.
-  - `cast`: Top 3 lead actors extracted to restrict high-dimensional feature noise.
-  - `director`: Extracted specifically from crew list where `job == 'Director'`.
-  - `overview`: Null/NaN values replaced with empty strings (`""`) to prevent `"nan"` literal text contamination.
-- **Entity Space Collapsing**: Multi-word names are collapsed into unified tokens (e.g. `"Sam Worthington"` -> `"SamWorthington"`) so TF-IDF treats full names as distinct single entities.
-- **Unified `tags` Feature**: Combines normalized `overview` words + `genres` + `keywords` + `cast` + `director` into a single space-separated text string per movie.
+- **Vectorization Technique**: `TfidfVectorizer` (max_features=5000, English stop words removed).
+- **Matrix Shapes**:
+  - **TF-IDF Feature Matrix**: `(4803, 5000)` (4,803 movies × 5,000 vocabulary terms).
+  - **Cosine Similarity Matrix**: `(4803, 4803)` (Pairwise similarity across all movie vectors).
+- **Core Engine Features (`src/recommender.py`)**:
+  - `MovieRecommender` class fitted on `clean_movies.csv` `tags`.
+  - Case-insensitive title resolution (`recommend("avatar")`, `recommend("AVATAR")`).
+  - `ValueError` exception raised for non-existent movie titles.
+  - Query movie self-exclusion (the query movie itself is never returned).
+  - Descending score sorting & `top_n` bounds handling.
 
 ---
 
@@ -76,12 +76,14 @@ Personalized-movie-recommendation-system/
 │
 ├── notebooks/
 │   ├── 01_data_exploration.ipynb
-│   └── 02_data_preprocessing.ipynb
+│   ├── 02_data_preprocessing.ipynb
+│   └── 03_recommendation_engine.ipynb
 │
 ├── src/
 │   ├── __init__.py
 │   ├── data_loader.py
-│   └── preprocessor.py
+│   ├── preprocessor.py
+│   └── recommender.py
 │
 ├── docs/
 │   └── reference-analysis.md
@@ -89,7 +91,8 @@ Personalized-movie-recommendation-system/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_data_loader.py
-│   └── test_preprocessor.py
+│   ├── test_preprocessor.py
+│   └── test_recommender.py
 │
 ├── .gitignore
 ├── README.md
@@ -103,7 +106,7 @@ Personalized-movie-recommendation-system/
 
 ### 1. Prerequisites & Installation
 
-Clone the repository and install requirements:
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/Dp8453/Personalized-movie-recommendation-system.git
@@ -113,7 +116,7 @@ pip install -r requirements.txt
 
 ### 2. Run Main Pipeline Verification
 
-Execute data loading and Phase 2 preprocessing:
+Execute end-to-end data loading, preprocessing, and recommendation generation:
 
 ```bash
 python run.py
@@ -121,18 +124,18 @@ python run.py
 
 ### 3. Run Unit Test Suite
 
-Execute all 13 unit tests:
+Execute all 26 unit tests across Phase 1, Phase 2, and Phase 3:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-### 4. Explore Notebooks
+### 4. Explore Recommendation Notebook
 
 Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/02_data_preprocessing.ipynb
+jupyter notebook notebooks/03_recommendation_engine.ipynb
 ```
 
 ---
@@ -141,7 +144,7 @@ jupyter notebook notebooks/02_data_preprocessing.ipynb
 
 - [x] **Phase 1**: Project Foundation, Dataset Setup (ID-based merge), Modular Data Loader & Initial EDA
 - [x] **Phase 2**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing & Tags Construction
-- [ ] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Content-Based Recommendation Engine
+- [x] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Content-Based Recommendation Engine
 - [ ] **Phase 4**: User Personalization & Hybrid Ranking Logic
 - [ ] **Phase 5**: Model Evaluation (Precision@K, Recall@K, NDCG@K)
 - [ ] **Phase 6**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
