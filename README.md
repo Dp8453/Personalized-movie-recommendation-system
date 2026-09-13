@@ -57,17 +57,24 @@ Phase 7 fuses Phase 4 personalized content-based recommendation and Phase 6 item
   $$\text{norm\_score}(c) = \frac{\text{raw\_score}(c) - \min(S)}{\max(S) - \min(S)}$$
 - **Weighted Hybrid Scoring**:
   $$\text{score}_{\text{hybrid}}(c) = \alpha \cdot \text{norm\_content\_score}(c) + (1 - \alpha) \cdot \text{norm\_cf\_score}(c)$$
-- **Title Identity Alignment**: Deterministically maps MovieLens normalized titles to TMDB clean titles (2,812 out of 9,742 movies mapped, 28.86% coverage) for content profile matching while maintaining MovieLens `movieId` as primary recommendation identity.
+- **Title Identity Alignment**: Deterministically maps MovieLens normalized titles to TMDB clean titles (2,812 out of 9,742 movies mapped, 28.86% coverage) for content profile matching while maintaining MovieLens `movieId` as primary recommendation identity. Unmapped items remain available to CF without receiving fabricated content scores.
 
 ### 2. Alpha Ablation Benchmark Results ($K=10$, 50 Evaluated Users)
 
 | Model | Alpha ($\alpha$) | Precision@10 | Recall@10 | NDCG@10 |
 | :--- | :---: | :---: | :---: | :---: |
-| **Pure Item-Based CF** | 0.00 | **0.0800** | **0.0683** | **0.0954** |
-| **CF-Dominant Hybrid** | 0.25 | 0.0620 | 0.0492 | 0.0729 |
-| **Balanced Hybrid** | 0.50 | 0.0620 | 0.0485 | 0.0617 |
-| **Content-Dominant Hybrid** | 0.75 | 0.0160 | 0.0311 | 0.0236 |
-| **Pure Personalized Content** | 1.00 | 0.0080 | 0.0228 | 0.0157 |
+| **CF-only hybrid scoring** | 0.00 | **0.0800** | **0.0683** | **0.0954** |
+| **CF-dominant hybrid** | 0.25 | 0.0620 | 0.0492 | 0.0729 |
+| **Balanced hybrid** | 0.50 | 0.0620 | 0.0485 | 0.0617 |
+| **Content-dominant hybrid** | 0.75 | 0.0160 | 0.0311 | 0.0236 |
+| **Content-only hybrid scoring** | 1.00 | 0.0080 | 0.0228 | 0.0157 |
+
+> [!NOTE]
+> **Endpoint Baseline Clarification**: $\alpha=0.00$ (CF-only) and $\alpha=1.00$ (Content-only) weight candidates selected from the candidate union pool ($N_{\text{cand}}=100$). They are conceptually distinct from the raw standalone Phase 6 CF and Phase 4 Content baselines.
+
+### 3. Empirical Performance & Strategic Limitations
+- **Benchmark Conclusion**: On the current MovieLens temporal benchmark, pure item-based collaborative filtering achieved the strongest ranking performance among the tested configurations ($NDCG@10 = 0.0954$). The hybrid system provides a flexible fusion architecture, but the current benchmark does not demonstrate an accuracy improvement over pure CF.
+- **Cold-Start Interpretation**: Content-based features can provide an item-side fallback for movies with available metadata but limited or missing collaborative interaction history. True new-user cold start remains unresolved because personalized content profiles require user preferences.
 
 ---
 
