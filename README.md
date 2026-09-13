@@ -80,7 +80,7 @@ This repository demonstrates production-grade machine learning system engineerin
 
 1. **Natural Language Processing & Vectorization**: TF-IDF feature extraction (`max_features=5000`), entity collapsing, overview text cleaning, and cosine similarity metric computation.
 2. **User Profile Modeling**: Linear preference weighting ($\mathbf{u} = \frac{\sum w_i \mathbf{v}_i}{\sum |w_i|}$) mapping user ratings ($1 \dots 5 \to -1.0 \dots +1.0$) into sparse feature vector space.
-3. **Item-Based Collaborative Filtering**: Memory-efficient SciPy CSR sparse matrix representation, rating mean-centering, pairwise item similarity computation, and leakage-safe temporal evaluation.
+3. **Item-Based Collaborative Filtering**: Memory-efficient SciPy CSR sparse matrix representation, cosine-based pairwise item similarity computation, and leakage-safe temporal evaluation.
 4. **Hybrid Scoring Architecture**: Union candidate pool selection ($N_{\text{cand}}=100$), Min-Max score normalization, title identity resolution, and parameter ablation.
 5. **Deterministic Explainable AI**: Sub-graph evidence extraction isolating exact metadata tag matches, historical rating contributions, and component fusion weights without LLM hallucination or evaluation data leakage.
 6. **API Serving & Pydantic Validation**: FastAPI REST backend featuring lifespan singleton initialization, strict custom validators (`field_validator`), structured error handlers, and zero-warning unit test suite (147 passing tests).
