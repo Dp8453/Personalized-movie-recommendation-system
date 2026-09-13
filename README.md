@@ -3,29 +3,31 @@
 A content-based movie recommendation engine built using movie metadata, Natural Language Processing (NLP) techniques, vectorization, and similarity modeling.
 
 > [!IMPORTANT]
-> **CURRENT PROJECT STATUS: PHASE 1 COMPLETED**
-> Only Phase 1 (Project Foundation, Dataset Ingestion, and Initial Exploratory Data Analysis) is currently implemented. Later phases (Data Cleaning, TF-IDF, Cosine Similarity, Recommendation Engine, Personalization, Evaluation Metrics, FastAPI, and Streamlit) are planned and will be built step-by-step.
+> **CURRENT PROJECT STATUS: PHASE 2 COMPLETED**
+> - **Phase 1 (Completed)**: Project Foundation, Data Ingestion, ID-based Merging (`movies.id == credits.movie_id`), and Initial EDA.
+> - **Phase 2 (Completed)**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing, Overview Imputation, and Unified `tags` Construction.
+> - **Future Phases (Upcoming)**: TF-IDF Vectorization, Cosine Similarity, Recommendation Engine, Personalization, Evaluation Metrics, FastAPI, and Streamlit.
 
 ---
 
 ## 🚀 End-to-End Project Architecture & Pipeline
 
 ```
-  [ Dataset ] (TMDB 5000 Movies & Credits)
+  [ Dataset Ingestion & ID Merge ] (4,803 Unique Movies)
        │
-       ▼  ◄── PHASE 1 (COMPLETED: ID-based Merge & EDA)
-  [ Data Cleaning & Validation ]
+       ▼  ◄── PHASE 1 (COMPLETED)
+  [ Data Preprocessing & Feature Engineering ]
+       │  ├── JSON Parsing (genres, keywords, cast, crew)
+       │  ├── Top 3 Lead Cast Extraction
+       │  ├── Director Extraction (crew job == 'Director')
+       │  ├── Entity Space Collapsing ("Sam Worthington" -> "SamWorthington")
+       │  ├── Plot Overview Null Imputation (NaN -> "")
+       │  └── Unified Tags Construction (overview + genres + keywords + cast + director)
        │
-       ▼  ◄── PHASE 2 (UPCOMING)
-  [ Feature Engineering & Metadata Extraction ]
+       ▼  ◄── PHASE 2 (COMPLETED: Exported to data/processed/clean_movies.csv)
+  [ Text Vectorization (TF-IDF) ]
        │
-       ▼
-  [ Text Preprocessing & Tag Creation ]
-       │
-       ▼
-  [ Vectorization (TF-IDF / Bag of Words) ]
-       │
-       ▼
+       ▼  ◄── PHASE 3 (UPCOMING)
   [ Similarity Modeling (Cosine Similarity) ]
        │
        ▼
@@ -46,17 +48,17 @@ A content-based movie recommendation engine built using movie metadata, Natural 
 
 ---
 
-## 📊 Phase 1 Implementation Summary
+## 📊 Phase 2 Feature Engineering Summary
 
-- **Dataset Source**: [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) (`tmdb_5000_movies.csv` & `tmdb_5000_credits.csv`).
-- **Primary Key Merging Strategy**: Inner-joined on `movies.id` == `credits.movie_id`. This yields **4,803 unique, 1-to-1 matched movie records** (avoiding duplicate row creation caused by title collisions).
-- **Git Tracking Policy**: Large raw CSV files (~45.7MB total) are kept locally in `data/raw/` and excluded from Git tracking (`.gitignore`) to keep the repository lightweight and adhere to GitHub repository size best practices.
-- **Key Recommendation Features Identified**: `id`/`movie_id`, `title`, `overview`, `genres`, `keywords`, `cast`, `crew` (Director).
-- **Modules Created**:
-  - `src/data_loader.py`: Modular dataset loader with relative path resolution, primary key matching, and error handling.
-  - `notebooks/01_data_exploration.ipynb`: Comprehensive EDA notebook answering 7 key dataset analysis questions.
-  - `docs/reference-analysis.md`: Structural analysis of reference recommendation implementation and technical merge key justification.
-  - `run.py` & `tests/test_data_loader.py`: Phase 1 entry point and automated unit tests.
+- **Processed Output**: `data/processed/clean_movies.csv` (4,803 rows × 8 columns, Git-ignored).
+- **Metadata Extraction Rules**:
+  - `genres`: JSON list extracted into genre string tokens.
+  - `keywords`: JSON list extracted into thematic keyword tokens.
+  - `cast`: Top 3 lead actors extracted to restrict high-dimensional feature noise.
+  - `director`: Extracted specifically from crew list where `job == 'Director'`.
+  - `overview`: Null/NaN values replaced with empty strings (`""`) to prevent `"nan"` literal text contamination.
+- **Entity Space Collapsing**: Multi-word names are collapsed into unified tokens (e.g. `"Sam Worthington"` -> `"SamWorthington"`) so TF-IDF treats full names as distinct single entities.
+- **Unified `tags` Feature**: Combines normalized `overview` words + `genres` + `keywords` + `cast` + `director` into a single space-separated text string per movie.
 
 ---
 
@@ -69,21 +71,25 @@ Personalized-movie-recommendation-system/
 │   ├── raw/                  # Raw TMDB 5000 CSV files (git-ignored)
 │   │   ├── tmdb_5000_movies.csv
 │   │   └── tmdb_5000_credits.csv
-│   └── processed/            # Cleaned data outputs (Phase 2+)
+│   └── processed/            # Cleaned data output (git-ignored)
+│       └── clean_movies.csv
 │
 ├── notebooks/
-│   └── 01_data_exploration.ipynb
+│   ├── 01_data_exploration.ipynb
+│   └── 02_data_preprocessing.ipynb
 │
 ├── src/
 │   ├── __init__.py
-│   └── data_loader.py
+│   ├── data_loader.py
+│   └── preprocessor.py
 │
 ├── docs/
 │   └── reference-analysis.md
 │
 ├── tests/
 │   ├── __init__.py
-│   └── test_data_loader.py
+│   ├── test_data_loader.py
+│   └── test_preprocessor.py
 │
 ├── .gitignore
 ├── README.md
@@ -97,7 +103,7 @@ Personalized-movie-recommendation-system/
 
 ### 1. Prerequisites & Installation
 
-Clone the repository and install the Phase 1 dependencies:
+Clone the repository and install requirements:
 
 ```bash
 git clone https://github.com/Dp8453/Personalized-movie-recommendation-system.git
@@ -105,28 +111,28 @@ cd Personalized-movie-recommendation-system
 pip install -r requirements.txt
 ```
 
-### 2. Verify Data Loader & Execution
+### 2. Run Main Pipeline Verification
 
-Run the Phase 1 entry point script to verify dataset loading and summary statistics:
+Execute data loading and Phase 2 preprocessing:
 
 ```bash
 python run.py
 ```
 
-### 3. Run Unit Tests
+### 3. Run Unit Test Suite
 
-Execute the unit test suite:
+Execute all 13 unit tests:
 
 ```bash
-python tests/test_data_loader.py
+python -m unittest discover -s tests -v
 ```
 
-### 4. Explore EDA Notebook
+### 4. Explore Notebooks
 
-Launch Jupyter Notebook to inspect the initial EDA:
+Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/01_data_exploration.ipynb
+jupyter notebook notebooks/02_data_preprocessing.ipynb
 ```
 
 ---
@@ -134,8 +140,8 @@ jupyter notebook notebooks/01_data_exploration.ipynb
 ## 📌 Implementation Roadmap
 
 - [x] **Phase 1**: Project Foundation, Dataset Setup (ID-based merge), Modular Data Loader & Initial EDA
-- [ ] **Phase 2**: Data Preprocessing, JSON Feature Extraction, Text Normalization & Tag Combination
-- [ ] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Recommendation Engine
+- [x] **Phase 2**: Data Preprocessing, JSON Feature Extraction, Entity Space Collapsing & Tags Construction
+- [ ] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Content-Based Recommendation Engine
 - [ ] **Phase 4**: User Personalization & Hybrid Ranking Logic
 - [ ] **Phase 5**: Model Evaluation (Precision@K, Recall@K, NDCG@K)
 - [ ] **Phase 6**: Web API Deployment (FastAPI) & Frontend UI (Streamlit)
