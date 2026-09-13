@@ -11,15 +11,24 @@ from src.data_loader import load_movies
 
 class TestDataLoader(unittest.TestCase):
     def test_load_movies_returns_dataframe(self):
-        """Test that load_movies returns a pandas DataFrame."""
+        """Test that load_movies returns a pandas DataFrame with expected row count."""
         df = load_movies()
         self.assertIsInstance(df, pd.DataFrame)
-        self.assertGreater(len(df), 0)
+        self.assertEqual(len(df), 4803, "Expected exactly 4,803 merged movie records.")
+
+    def test_id_matching(self):
+        """Test that primary keys 'id' and 'movie_id' match across all rows."""
+        df = load_movies()
+        self.assertTrue(
+            (df["id"] == df["movie_id"]).all(),
+            "Primary keys 'id' and 'movie_id' must match for all merged rows."
+        )
 
     def test_expected_columns_exist(self):
         """Test that critical columns exist in the loaded dataset."""
         df = load_movies()
         required_columns = [
+            "id",
             "movie_id",
             "title",
             "overview",

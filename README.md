@@ -13,7 +13,7 @@ A content-based movie recommendation engine built using movie metadata, Natural 
 ```
   [ Dataset ] (TMDB 5000 Movies & Credits)
        │
-       ▼  ◄── PHASE 1 (COMPLETED)
+       ▼  ◄── PHASE 1 (COMPLETED: ID-based Merge & EDA)
   [ Data Cleaning & Validation ]
        │
        ▼  ◄── PHASE 2 (UPCOMING)
@@ -49,12 +49,13 @@ A content-based movie recommendation engine built using movie metadata, Natural 
 ## 📊 Phase 1 Implementation Summary
 
 - **Dataset Source**: [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) (`tmdb_5000_movies.csv` & `tmdb_5000_credits.csv`).
-- **Merged Dataset Size**: 4,809 movie records across 23 columns.
-- **Key Recommendation Features Identified**: `title`, `overview`, `genres`, `keywords`, `cast`, `crew` (Director).
+- **Primary Key Merging Strategy**: Inner-joined on `movies.id` == `credits.movie_id`. This yields **4,803 unique, 1-to-1 matched movie records** (avoiding duplicate row creation caused by title collisions).
+- **Git Tracking Policy**: Large raw CSV files (~45.7MB total) are kept locally in `data/raw/` and excluded from Git tracking (`.gitignore`) to keep the repository lightweight and adhere to GitHub repository size best practices.
+- **Key Recommendation Features Identified**: `id`/`movie_id`, `title`, `overview`, `genres`, `keywords`, `cast`, `crew` (Director).
 - **Modules Created**:
-  - `src/data_loader.py`: Modular dataset loader with relative path resolution and error handling.
+  - `src/data_loader.py`: Modular dataset loader with relative path resolution, primary key matching, and error handling.
   - `notebooks/01_data_exploration.ipynb`: Comprehensive EDA notebook answering 7 key dataset analysis questions.
-  - `docs/reference-analysis.md`: Structural and architectural analysis of reference recommendation implementation.
+  - `docs/reference-analysis.md`: Structural analysis of reference recommendation implementation and technical merge key justification.
   - `run.py` & `tests/test_data_loader.py`: Phase 1 entry point and automated unit tests.
 
 ---
@@ -65,10 +66,10 @@ A content-based movie recommendation engine built using movie metadata, Natural 
 Personalized-movie-recommendation-system/
 │
 ├── data/
-│   ├── raw/
+│   ├── raw/                  # Raw TMDB 5000 CSV files (git-ignored)
 │   │   ├── tmdb_5000_movies.csv
 │   │   └── tmdb_5000_credits.csv
-│   └── processed/
+│   └── processed/            # Cleaned data outputs (Phase 2+)
 │
 ├── notebooks/
 │   └── 01_data_exploration.ipynb
@@ -132,7 +133,7 @@ jupyter notebook notebooks/01_data_exploration.ipynb
 
 ## 📌 Implementation Roadmap
 
-- [x] **Phase 1**: Project Foundation, Dataset Setup, Modular Data Loader & Initial EDA
+- [x] **Phase 1**: Project Foundation, Dataset Setup (ID-based merge), Modular Data Loader & Initial EDA
 - [ ] **Phase 2**: Data Preprocessing, JSON Feature Extraction, Text Normalization & Tag Combination
 - [ ] **Phase 3**: Vectorization (TF-IDF), Similarity Computation & Recommendation Engine
 - [ ] **Phase 4**: User Personalization & Hybrid Ranking Logic

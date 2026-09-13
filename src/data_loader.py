@@ -10,7 +10,13 @@ def get_project_root() -> Path:
 
 def load_movies(data_dir: str | Path | None = None) -> pd.DataFrame:
     """
-    Loads and merges the TMDB 5000 movies and credits datasets.
+    Loads and merges the TMDB 5000 movies and credits datasets using primary key IDs.
+
+    Merge Strategy:
+    - Primary key in tmdb_5000_movies.csv: 'id'
+    - Primary key in tmdb_5000_credits.csv: 'movie_id'
+    - Merging on 'id' == 'movie_id' guarantees 1-to-1 matching (4,803 unique movies).
+    - Avoids duplicate row creation caused by title collisions (e.g. remakes like Batman).
 
     Parameters
     ----------
@@ -21,7 +27,7 @@ def load_movies(data_dir: str | Path | None = None) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Merged pandas DataFrame containing movie details and credit information.
+        Merged pandas DataFrame containing 4,803 movie records across 23 columns.
 
     Raises
     ------
@@ -54,9 +60,17 @@ def load_movies(data_dir: str | Path | None = None) -> pd.DataFrame:
     print(f"Loading credits dataset from: {credits_path}")
     credits_df = pd.read_csv(credits_path)
 
-    print("Merging datasets on 'title'...")
-    merged_df = movies_df.merge(credits_df, on="title")
-    print(f"Successfully loaded and merged {len(merged_df)} movie records.")
+    print("Merging datasets on primary key ('id' == 'movie_id')...")
+    # Merge using primary keys 'id' and 'movie_id'
+    merged_df = movies_df.merge(
+        credits_df, left_on="id", right_on="movie_id", suffixes=("", "_credits")
+    )
+
+    # Remove redundant title_credits column if present
+    if "title_credits" in merged_df.columns:
+        merged_df = merged_df.drop(columns=["title_credits"])
+
+    print(f"Successfully loaded and merged {len(merged_df)} unique movie records.")
 
     return merged_df
 
@@ -64,4 +78,4 @@ def load_movies(data_dir: str | Path | None = None) -> pd.DataFrame:
 if __name__ == "__main__":
     df = load_movies()
     print("Preview of merged dataset:")
-    print(df.head(2))
+    print(df[["id", "movie_id", "title"]].head())

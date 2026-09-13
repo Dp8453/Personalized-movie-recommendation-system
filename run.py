@@ -17,11 +17,15 @@ def main():
         df = load_movies()
 
         print("\n--- Dataset Summary ---")
-        print(f"Total Movies Loaded: {len(df)}")
+        print(f"Total Unique Movies Loaded: {len(df)}")
         print(f"Total Columns: {len(df.columns)}")
         print("\nColumns:")
         for idx, col in enumerate(df.columns, 1):
             print(f"  {idx:2d}. {col}")
+
+        print("\n--- Primary Key Check ---")
+        id_match_count = (df["id"] == df["movie_id"]).sum()
+        print(f"ID Alignment ('id' == 'movie_id'): {id_match_count} / {len(df)} records matched perfectly.")
 
         print("\n--- Phase 1 Checks Passed Successfully ---")
 
